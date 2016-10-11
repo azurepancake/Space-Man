@@ -25,14 +25,30 @@ typedef struct {
 	int yVel;
 } Background;
 
+typedef struct {
+	SDL_Surface *sprite;
+	SDL_Rect rect;
+	int xVel;
+	int yVel;
+} Grunt;
+
+typedef struct {
+	bool playing;
+	int gruntCount;
+	int gruntTimer;
+	int gruntMax;
+	Grunt *grunts[50];
+	Laser *playerLasers[50];
+} Game;
+
 SDL_Window *window = NULL;
 SDL_Surface *screen = NULL;
 SDL_Event event;
 const Uint8 *keystate;
+Game *game;
 Player *player;
+Grunt *grunt;
 Background *background;
-Laser *playerLasers[50];
-bool playing = true;
 
 void init()
 {
@@ -53,6 +69,20 @@ SDL_Surface *loadSurface(char *image)
 	return optimizedSurface;
 }
 
+Game *setupGame()
+{
+	Game *game = malloc(sizeof(Game));
+
+	game->playing = true;
+	game->gruntCount = 0;
+	game->gruntTimer = 0;
+	game->gruntMax = 200;
+	game->grunts[50] = NULL;
+	game->playerLasers[50] = NULL;
+
+	return game;
+}
+
 Player *loadPlayer(char *sprite, int x, int y)
 {
 	Player *player = malloc(sizeof(Player));
@@ -68,6 +98,17 @@ Player *loadPlayer(char *sprite, int x, int y)
 	player->laserVel = 3;
 
 	return player;
+}
+
+Grunt *loadGrunt(char *sprite, int x, int y)
+{
+	Grunt *grunt = malloc(sizeof(Grunt));
+
+	grunt->sprite = loadSurface(sprite);
+	grunt->rect.x = x;
+	grunt->rect.y = y;
+
+	return grunt;
 }
 
 Laser *fireLaser(char *sprite, int x, int y) 
@@ -111,35 +152,64 @@ void draw()
 	SDL_BlitSurface(player->sprite, NULL, screen, &player->rect);
 
 	int i;
+	for(i = 0; i < game->gruntCount; ++i) {
+		SDL_BlitSurface(game->grunts[i]->sprite, NULL, screen, &game->grunts[i]->rect);
+	}		
+
 	for(i = 0; i < player->laserCount; ++i) {
-		SDL_BlitSurface(playerLasers[i]->sprite, NULL, screen, &playerLasers[i]->rect);
+		SDL_BlitSurface(game->playerLasers[i]->sprite, NULL, screen, &game->playerLasers[i]->rect);
 	}
 
 	SDL_UpdateWindowSurface(window);
 }
 
-void updates()
+void spawnGrunts(char *formation)
 {
-	int i;
-	for(i = 0; i < player->laserCount; ++i) {
-		playerLasers[i]->rect.y -= player->laserVel;
-	}
+	game->gruntTimer += 1;
 
-	for(i = 0; i < player->laserCount; ++i) {
-		if(playerLasers[i]->rect.y <= 0) {
-			SDL_FreeSurface(playerLasers[i]->sprite);
-			playerLasers[i]->sprite = NULL;
+	if(strcmp(formation, "random") == 0) {
+		if(game->gruntTimer == game->gruntMax) {
+			int x = rand() % 400;
+			game->grunts[game->gruntCount++] = loadGrunt("images/grunt.bmp", x, 0);
+			game->gruntTimer = 0;
 		}
 	}
 
-	//background->rect.y += background->yVel;
+	int i;
+	for(i = 0; i < game->gruntCount; ++i) {
+		game->grunts[i]->rect.y += 1;
+
+		if(game->grunts[i]->rect.y >= 500) {
+			SDL_FreeSurface(game->grunts[i]->sprite);
+			game->grunts[i]->sprite = NULL;
+		}
+	}
+}
+
+void shootLasers()
+{
+	int i;
+	for(i = 0; i < player->laserCount; ++i) {
+		game->playerLasers[i]->rect.y -= player->laserVel;
+
+		if(game->playerLasers[i]->rect.y <= 0) {
+			SDL_FreeSurface(game->playerLasers[i]->sprite);
+			game->playerLasers[i]->sprite = NULL;
+		}
+	}
+}	
+
+void updates()
+{
+	shootLasers();
+	spawnGrunts("random");
 }
 
 int events() 
 {
 	while(SDL_PollEvent(&event) != 0) {
 		if(event.type == SDL_QUIT) {
-			playing = false;
+			game->playing = false;
 		}
 		
 		if(event.type == SDL_KEYUP) {
@@ -171,7 +241,7 @@ int events()
 		player->laserTimer += 1;
 				
 		if(player->laserTimer == player->laserMax) {
-			playerLasers[player->laserCount++] = fireLaser("images/laser.bmp", (player->rect.x + 11), player->rect.y);
+			game->playerLasers[player->laserCount++] = fireLaser("images/laser.bmp", (player->rect.x + 11), player->rect.y);
 			player->laserTimer = 0;
 		}
 	}
@@ -182,12 +252,13 @@ int events()
 }
 
 int main(int argc, char *argv[])
-{
+{	
 	init();
+	game = setupGame();
 	player = loadPlayer("images/ship1.bmp", 190, 450);
 	background = loadBackground("images/background1.bmp");
 
-	while(playing) {
+	while(game->playing) {
 		events();
 		updates();
 		draw();
