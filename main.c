@@ -167,13 +167,24 @@ void spawnGrunts(char *formation)
 {
 	game->gruntTimer += 1;
 
-	if(strcmp(formation, "random") == 0) {
+	if(strcmp(formation, "staggered") == 0) {
 		if(game->gruntTimer == game->gruntMax) {
 			int x = rand() % 400;
 			game->grunts[game->gruntCount++] = loadGrunt("images/grunt.bmp", x, 0);
 			game->gruntTimer = 0;
 		}
 	}
+	else if(strcmp(formation, "straight") == 0) {
+		if(game->gruntTimer == game->gruntMax) {
+			int y = 40;
+			int t;
+			for(t = 0; t <= 6; t++) {
+				game->grunts[game->gruntCount++] = loadGrunt("images/grunt.bmp", y, 0);
+				y += 50;
+			}			
+			game->gruntTimer = 0;
+		}
+	}			
 
 	int i;
 	for(i = 0; i < game->gruntCount; ++i) {
@@ -182,6 +193,8 @@ void spawnGrunts(char *formation)
 		if(game->grunts[i]->rect.y >= 500) {
 			SDL_FreeSurface(game->grunts[i]->sprite);
 			game->grunts[i]->sprite = NULL;
+			free(game->grunts[i]->sprite);
+			free(game->grunts[i]);
 		}
 	}
 }
@@ -202,7 +215,8 @@ void shootLasers()
 void updates()
 {
 	shootLasers();
-	spawnGrunts("random");
+	//spawnGrunts("staggered");
+	spawnGrunts("straight");
 }
 
 int events() 
