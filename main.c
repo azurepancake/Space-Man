@@ -38,7 +38,7 @@ typedef struct {
 	int gruntTimer;
 	int gruntMax;
 	Grunt *grunts[50];
-	Laser *playerLasers[50];
+	Laser *playerLasers[100];
 } Game;
 
 SDL_Window *window = NULL;
@@ -78,7 +78,7 @@ Game *setupGame()
 	game->gruntTimer = 0;
 	game->gruntMax = 200;
 	game->grunts[50] = NULL;
-	game->playerLasers[50] = NULL;
+	game->playerLasers[100] = NULL;
 
 	return game;
 }
@@ -191,10 +191,11 @@ void spawnGrunts(char *formation)
 		game->grunts[i]->rect.y += 1;
 
 		if(game->grunts[i]->rect.y >= 500) {
-			SDL_FreeSurface(game->grunts[i]->sprite);
-			game->grunts[i]->sprite = NULL;
-			free(game->grunts[i]->sprite);
-			free(game->grunts[i]);
+			//SDL_FreeSurface(game->grunts[i]->sprite);
+			//free(game->grunts[i]->sprite);
+			//game->grunts[i]->sprite = NULL;
+			//free(game->grunts[i]);
+			//game->grunts[i] = NULL;
 		}
 	}
 }
@@ -207,7 +208,8 @@ void shootLasers()
 
 		if(game->playerLasers[i]->rect.y <= 0) {
 			SDL_FreeSurface(game->playerLasers[i]->sprite);
-			game->playerLasers[i]->sprite = NULL;
+			free(game->playerLasers[i]);
+			game->playerLasers[i] = NULL;
 		}
 	}
 }	
@@ -216,7 +218,7 @@ void updates()
 {
 	shootLasers();
 	//spawnGrunts("staggered");
-	spawnGrunts("straight");
+	//spawnGrunts("straight");
 }
 
 int events() 
@@ -255,6 +257,10 @@ int events()
 		player->laserTimer += 1;
 				
 		if(player->laserTimer == player->laserMax) {
+			if(player->laserCount == 99) {
+				player->laserCount = 0;
+			}
+
 			game->playerLasers[player->laserCount++] = fireLaser("images/laser.bmp", (player->rect.x + 11), player->rect.y);
 			player->laserTimer = 0;
 		}
